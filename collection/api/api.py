@@ -1,17 +1,37 @@
 from datetime import datetime
 from urllib.parse import urlencode
-
 import sys
-
 import math
-
 from .json_request import json_request
 
-SERVICE_KEY = '%2FfZdR%2Bue1CSxLEnMkZXa9iDYontLTMTIteD5%2BzYCiMYpDKUZNUh2FHGDQ04zazSEmLl34FClDQk8a7flFCIQKA%3D%3D'
+
+def pd_gen_url(endpoint, service_key, **params):
+    return '%s?%s&serviceKey=%s' % (endpoint, urlencode(params), service_key)
 
 
-def pd_gen_url(endpoint, **params):
-    return '%s?%s&serviceKey=%s' % (endpoint, urlencode(params), SERVICE_KEY)
+def pd_fetch_foreign_visitor(country_code=0, year=0, month=0, service_key=''):
+    endpoint = 'http://openapi.tour.go.kr/openapi/service/EdrcntTourismStatsService/getEdrcntTourismStatsList'
+
+    url = pd_gen_url(
+        endpoint,
+        service_key,
+        YM='{0:04d}{1:02d}'.format(year, month),
+        NAT_CD=country_code,
+        ED_CD='E',
+        _type='json')
+    json_result = json_request(url=url)
+
+    json_response = json_result.get('response')
+    json_header = json_response.get('header')
+    result_message = json_header.get('resultMsg')
+    if 'OK' != result_message:
+        print("%s : Error[%s] for request [%s]" % (datetime.now(), result_message, url), file=sys.stderr)
+        return None
+
+    json_body = json_response.get('body')
+    json_items = json_body.get('items')
+
+    return json_items.get('item') if isinstance(json_items, dict) else None
 
 
 def pd_fetch_tourspot_visitor(
@@ -19,7 +39,8 @@ def pd_fetch_tourspot_visitor(
         district2='',
         tourspot='',
         year=0,
-        month=0):
+        month=0,
+        service_key=''):
 
     endpoint = 'http://openapi.tour.go.kr/openapi/service/TourismResourceStatsService/getPchrgTrrsrtVisitorList'
     pageno = 1
@@ -28,6 +49,7 @@ def pd_fetch_tourspot_visitor(
     while hasnext:
         url = pd_gen_url(
             endpoint,
+            service_key,
             YM='{0:04d}{1:02d}'.format(year, month),
             SIDO=district1,
             GUNGU=district2,
